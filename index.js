@@ -28,6 +28,7 @@ async function run() {
     await client.connect();
 
     const jobCollection = client.db('jobBazarServer').collection('allJobs');
+    const jobAppliedCollection = client.db('jobBazarServer').collection('appliedJobs');
 
     app.get('/allJobs', async(req, res) =>{
       const cursor = jobCollection.find();
@@ -40,6 +41,13 @@ async function run() {
       const query = { _id: new ObjectId(id) }
       const result = await jobCollection.findOne(query);
       res.json(result) 
+    })
+
+    app.post('/appliedJobs', async(req,res) => {
+      const appliedJob = req.body;
+      console.log(appliedJob);
+      const result = await jobAppliedCollection.insertOne(appliedJob);
+      res.send(result)
     })
 
     // Send a ping to confirm a successful connection
