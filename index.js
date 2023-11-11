@@ -36,6 +36,21 @@ async function run() {
       res.send(result)
     })
 
+    // app.post('/allJobs',async(req,res) =>{
+    //   const newJOb = req.body;
+    //   console.log(newJOb)
+    //   const result = await jobCollection.insertOne(allJobs)
+    //   res.send(result)
+    // })
+
+    app.post('/allJobs', async (req, res) => {
+      const newJob = req.body;
+      console.log(newJob);
+      const result = await jobCollection.insertOne(newJob);
+      res.send(result);
+    });
+    
+
     app.get('/allJobs/:id', async(req, res) =>{
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
@@ -43,12 +58,42 @@ async function run() {
       res.json(result) 
     })
 
-    app.post('/appliedJobs', async(req,res) => {
-      const appliedJob = req.body;
-      console.log(appliedJob);
-      const result = await jobAppliedCollection.insertOne(appliedJob);
+    app.get('/myJobs/:email', async(req, res)=>{
+      const email = req.params.email;
+      const query = {userEmail: email}
+      const result = await jobCollection.find(query).toArray()
       res.send(result)
     })
+
+    
+
+    app.get('/appliedJobs', async(req,res) =>{
+      console.log(req.query.email);
+      let query = {};
+      if(req.query?.email){
+        query={email:req.query.email}
+      }
+      const result = await jobAppliedCollection.find(query).toArray();
+      res.send(result)
+    })
+
+    app.post('/appliedJobs', async(req,res) => {
+      try {
+        const appliedJob = req.body;
+      const id = appliedJob._id
+      const filtered = await jobAppliedCollection.findOne({_id:id})
+      if (!!filtered) {
+        res.json({error:"Already applied"}).status(409)
+      }else{
+        const result = await jobAppliedCollection.insertOne(appliedJob);
+        res.send(result)
+      }
+      } catch (error) {
+        res.json({error:"Error"})
+        console.error(error)
+      }
+    })
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
