@@ -49,6 +49,12 @@ async function run() {
       .send({success: true})
     })
 
+    app.post('/logout', async(req,res) => {
+      const user = req.body;
+      console.log('logout', user)
+      res.clearCookie('token', {maxAge:0}).send({success:true})
+    })
+
     // service related api
     app.get('/allJobs', async (req, res) => {
       const cursor = jobCollection.find();
