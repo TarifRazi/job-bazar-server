@@ -1,11 +1,16 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express();
 const port = process.env.PORT || 5000
 
-app.use(cors());
+app.use(cors({
+  origin:['http://localhost:5173'],
+  credentials: true
+}));
+// app.use(cors())
 app.use(express.json());
 
 console.log(process.env.Db_PASS)
@@ -30,7 +35,22 @@ async function run() {
     const jobCollection = client.db('jobBazarServer').collection('allJobs');
     const jobAppliedCollection = client.db('jobBazarServer').collection('appliedJobs');
 
-    app.get('/allJobs', async(req, res) =>{
+    // auth related api
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      console.log(user)
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+      res
+      .cookie('token', token,{
+        httpOnly:true,
+        secure: false,
+        // sameSite: 'none'
+      })
+      .send({success: true})
+    })
+
+    // service related api
+    app.get('/allJobs', async (req, res) => {
       const cursor = jobCollection.find();
       const result = await cursor.toArray();
       res.send(result)
@@ -49,83 +69,90 @@ async function run() {
       const result = await jobCollection.insertOne(newJob);
       res.send(result);
     });
-    
 
-    app.get('/allJobs/:id', async(req, res) =>{
+
+    app.get('/allJobs/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
       const result = await jobCollection.findOne(query);
-      res.json(result) 
+      res.json(result)
     })
 
-    app.get('/myJobs/:email', async(req, res)=>{
+    app.get('/myJobs/:email', async (req, res) => {
       const email = req.params.email;
-      const query = {userEmail: email}
+      const query = { userEmail: email }
       const result = await jobCollection.find(query).toArray()
       res.send(result)
     })
 
-    app.get('/myJobs/:id',async(req,res)=>{
+    app.get('/myJobs/:id', async (req, res) => {
       const id = req.params.id
-      const query ={_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = await jobCollection.findOne(query);
       res.send(result)
     })
 
-    app.put('/myJobs/:id',async(req,res)=>{
+    app.put('/myJobs/:id', async (req, res) => {
       const id = req.params.id
-      const filter = {_id: new ObjectId(id)}
-      const options = {upsert: true};
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true };
       const updateJob = req.body
-      const Job ={
-        $set:{
-          image :updateJob.image, 
-          jobDetails :updateJob.jobDetails, 
-          jobTitle :updateJob.jobTitle, 
-          userName :updateJob.userName, 
-          category :updateJob.category, 
-          salaryRange :updateJob.salaryRange, 
-          postingDate :updateJob.postingDate, 
-          applicantNumber :updateJob.applicantNumber, 
-          applicationDeadline :updateJob.applicationDeadline,
+      const Job = {
+        $set: {
+          image: updateJob.image,
+          jobDetails: updateJob.jobDetails,
+          jobTitle: updateJob.jobTitle,
+          userName: updateJob.userName,
+          category: updateJob.category,
+          salaryRange: updateJob.salaryRange,
+          postingDate: updateJob.postingDate,
+          applicantNumber: updateJob.applicantNumber,
+          applicationDeadline: updateJob.applicationDeadline,
         }
       }
-      const result = await jobCollection.updateOne(filter,Job,options)
+      const result = await jobCollection.updateOne(filter, Job, options)
       res.send(result)
     })
 
-    app.delete('/myJobs/:id', async(req, res)=>{
+    app.delete('/myJobs/:id', async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = await jobCollection.deleteOne(query);
       res.send(result);
     })
 
-    app.get('/appliedJobs', async(req,res) =>{
+    app.get('/appliedJobs', async (req, res) => {
       console.log(req.query.email);
       let query = {};
-      if(req.query?.email){
-        query={email:req.query.email}
+      if (req.query?.email) {
+        query = { email: req.query.email }
       }
       const result = await jobAppliedCollection.find(query).toArray();
       res.send(result)
     })
 
-    app.post('/appliedJobs', async(req,res) => {
+    app.post('/appliedJobs', async (req, res) => {
       try {
         const appliedJob = req.body;
-      const id = appliedJob._id
-      const filtered = await jobAppliedCollection.findOne({_id:id})
-      if (!!filtered) {
-        res.json({error:"Already applied"}).status(409)
-      }else{
-        const result = await jobAppliedCollection.insertOne(appliedJob);
-        res.send(result)
-      }
+        const id = appliedJob._id
+        const filtered = await jobAppliedCollection.findOne({ _id: id })
+        if (!!filtered) {
+          res.json({ error: "Already applied" }).status(409)
+        } else {
+          const result = await jobAppliedCollection.insertOne(appliedJob);
+          res.send(result)
+        }
       } catch (error) {
-        res.json({error:"Error"})
+        res.json({ error: "Error" })
         console.error(error)
       }
+    })
+
+    app.delete('/appliedJobs/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await jobCollection.deleteOne(query);
+      res.send(result);
     })
 
 
@@ -140,10 +167,10 @@ async function run() {
 run().catch(console.dir);
 
 
-app.get('/',(req,res) =>{
-    res.send('test')
+app.get('/', (req, res) => {
+  res.send('test')
 })
 
-app.listen(port, () =>{
-    console.log(`server running on ${port}`)
+app.listen(port, () => {
+  console.log(`server running on ${port}`)
 })
