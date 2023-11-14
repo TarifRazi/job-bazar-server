@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken')
+const cookieParser = require('cookie-parser')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express();
@@ -12,6 +13,7 @@ app.use(cors({
 }));
 // app.use(cors())
 app.use(express.json());
+app.use(cookieParser())
 
 console.log(process.env.Db_PASS)
 
@@ -26,6 +28,18 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
+
+// middleware
+const logger = (req, res, next)=>{
+  console.log('log:info', req.method, req.url);
+  next()
+}
+
+const verifyToken = (req, res, next)=>{
+const token= req?.cookies?.token;
+console.log('verify token', token)
+next()
+}
 
 async function run() {
   try {
@@ -84,7 +98,9 @@ async function run() {
       res.json(result)
     })
 
-    app.get('/myJobs/:email', async (req, res) => {
+    app.get('/myJobs/:email',logger,verifyToken, async (req, res) => {
+      // console.log('fkjfh', req.cookies)
+
       const email = req.params.email;
       const query = { userEmail: email }
       const result = await jobCollection.find(query).toArray()
